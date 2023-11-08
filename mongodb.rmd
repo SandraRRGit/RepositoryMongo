@@ -1,0 +1,122 @@
+---
+title: "Practica Big Data con Mongo DB"
+author: "Sandra Ruiz Ruiz"
+date: "2023-10-22"
+output: html_document
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(mongolite)
+```
+
+```{r}
+cadena_conexion = 'mongodb+srv://user01:user01@cluster0.mcblc3z.mongodb.net/test'
+```
+
+```{r}
+opciones_conexion = ssl_options(weak_cert_validation = T)
+```
+
+```{r}
+viajes = mongo(collection="trips", db="sample_training", url=cadena_conexion, options = opciones_conexion)
+```
+
+```{r}
+viajes$count()
+```
+```{r}
+viajes$iterate()$one()
+```
+
+```{r}
+viajes$find(sort = '{"tripduration" : -1}' , limit = 5)
+```
+```{r}
+query = viajes$find('{"usertype":"Subscriber","tripduration":{"$gt":240},"$expr": {"$eq": ["$start station name","$end station name"]}}')
+```
+
+```{r}
+tipos_usuario = viajes$aggregate('[{"$group":{"_id":"$usertype", "Count": {"$sum":1}}}]')
+```
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+
+df <- as.data.frame(tipos_usuario)
+
+ggplot(df,aes(x=reorder(`_id`,Count),y=Count))+
+geom_bar(stat="identity",color='blue',fill='#aaaaff')+geom_text(aes(label = Count), color = "black") +coord_flip()+xlab("Tipo Usuario")
+```
+
+## Tarea 1
+
+```{r}
+inspecciones = mongo(collection="inspections", db="sample_training", url=cadena_conexion, options = opciones_conexion)
+```
+
+```{r}
+inspecciones$count()
+```
+```{r}
+inspecciones$iterate()$one()
+```
+```{r}
+resultado = inspecciones$aggregate('[{"$group":{"_id":"$result", "Count": {"$sum":1}}}]')
+```
+
+```{r}
+
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+
+df <- as.data.frame(resultado)
+
+ggplot(df,aes(x=reorder(`_id`,Count),y=Count))+
+geom_bar(stat="identity",color='blue',fill='#aaaaff')+geom_text(aes(label = Count), color = "black") +coord_flip()+xlab("resultado_inspeccion")
+
+```
+
+##Tarea 2
+
+```{r}
+inspecciones$aggregate('[{ "$addFields": {
+                         "dateFormateado": {
+                         "$dateFromString": {
+                         "dateString": "$date"
+                         }
+                       }
+                      }
+                     }]')
+
+```
+
+## Tarea 4
+```{r}
+companias = mongo(collection="companies", db="sample_training", url=cadena_conexion, options = opciones_conexion)
+
+
+query = companias$find('{"category_code":"advertising","founded_year":{"$gt":2000}}')
+
+
+numeroempresas = companias$aggregate('[
+{
+"$match": {"category_code":"advertising","founded_year":{"$gt":2000}}
+},
+{
+"$group": {"_id":"$founded_year","count":{"$count":{}}}
+}]')
+colnames(numeroempresas)[1] ="ano"
+
+ggplot(numeroempresas, aes(x= ano, y=count)) + geom_point()
+
+```
+
